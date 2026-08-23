@@ -1,0 +1,217 @@
+# A physics-informed neural network method for identifying parameters and predicting remaining life of fatigue crack growth
+**Authors**: Wangwang Liao, Xiangyun Long*, Chao Jiang*  
+**Affiliation**: College of Mechanical and Vehicle Engineering, Hunan University, Changsha City, PR China  
+**Journal**: International Journal of Fatigue 191 (2025) 108678  
+**DOI**: https://doi.org/10.1016/j.ijfatigue.2024.108678  
+**Publication Information**: Received 14 June 2024; Revised 13 August 2024; Accepted 29 October 2024; Available online 30 October 2024  
+
+## Keywords
+Fatigue crack growth; Remaining life assessment; Physics-informed neural networks; Data-physics fusion; Parameter identification
+
+## Abstract
+Predicting the remaining life of fatigue cracks is crucial for planning maintenance and repair strategies to prevent untoward incidents. This paper proposes a novel physics-informed neural network (PINN) method for identifying parameters and predicting remaining fatigue crack growth life (FCGL). Initially, the relationship between crack length and fatigue cycles is established through a neural network, and the gradient of fatigue cycles with respect to crack length is obtained by automatic differentiation. Subsequently, a composite loss function is designed to incorporate this gradient within the confines of physical knowledge, ensuring that the established relationship not only aligns with observed data but also adheres to physical knowledge. Furthermore, during the network training, the parameters in physical models are simultaneously updated to better conform to the individuality of the monitored subject. All predicted remaining FCGLs fall within the 1.5 times error band. Compared to purely data-driven or physics-based methods, the proposed method offers more robust and accurate predictions of remaining FCGLs.
+
+## 1. Introduction
+Fatigue cracks frequently occur in materials or structures due to cyclic loadings [1–3]. Their propagation can lead to fracture failure, causing accidents or endangering structural safety. Remaining fatigue crack growth life (FCGL) refers to the life of FCG from an initial size to a critical size under fatigue cyclic loading. Accurate prediction is crucial for planning maintenance strategies (repairs, replacements, reinforcements) to prevent untoward incidents.
+
+### 1.1 Existing Methods
+- **Physics-based methods**: Based on experimental analyses and theoretical investigations of FCG [4–10]. The Paris law [10] (linear elastic fracture mechanics) is widely used, revealing a power-law relationship between fatigue crack growth rate (FCGR) and stress intensity factor (SIF) range. Extended research incorporates complex loading [11,12], nonlinear material behaviors [13–16], and uncertainties [17].
+- **Data-driven methods**: Promoted by computing technology, they approximate fatigue damage processes without presupposing functional forms. Advantages include easy integration of multiple factors (materials, load, defects) [21], and applications in fatigue life prediction [22–24], defect detection [25–27], and SIF calculation [28,29]. Limitations: require large labeled data (costly/difficult to acquire), "black box" issues (poor interpretability, extrapolation, overfitting) [30–31].
+
+### 1.2 Physics-Informed Neural Networks (PINN)
+PINN integrates physical knowledge/empirical formulas into neural networks, enabling high-precision predictions with limited data [32–33]. Hot topic in fatigue and fracture [34–37], with three fusion types:
+1. Use physical model predictions as inputs or fuse outputs [38].
+2. Construct physics-enriched network structures (e.g., Paris law-based RNN for damage accumulation) [35,39].
+3. Incorporate physical information into loss functions (empirical models, S-N curves, constitutive relationships) [40–42].
+
+### 1.3 Research Gap & Innovation
+Little attention to PINN-based remaining FCGL prediction, which relies on limited prior data. Existing methods have limitations: physical models face parameter identification challenges with limited data; data-driven methods lack interpretability and extrapolation. This paper proposes a PINN method integrating FCG data and physical knowledge, constraining network gradients via physical laws and inversely identifying parameters during training.
+
+## 2. Overview of the Proposed Method
+### 2.1 Objective
+Comprehensively utilize FCG physical knowledge and observed data to identify physical model parameters, enhance extrapolation capability, and accurately predict remaining FCGL from early-stage crack length (a) and fatigue cycles (n) data.
+
+### 2.2 Framework (Fig. 1)
+1. **Data & Knowledge Preparation**: Input (a) → Output (n); physical knowledge from Paris law [10].
+2. **PINN Construction**: Embed physical knowledge via composite loss function.
+3. **Training**: Train network with observed data, update Paris law parameters simultaneously.
+4. **Validation**: Verify performance with two FCG datasets.
+
+## 3. Methodology (Fig. 2)
+### 3.1 Physical Knowledge of Remaining FCGL
+- **SIF (Stress Intensity Factor)**: Describes crack growth driving force (linear elastic fracture mechanics [7]); larger SIF → stronger crack tip stress field → easier propagation.
+- **Paris Law**: Relationship between FCGR and SIF range (\(\Delta K\)):  
+  \[\frac{da}{dn}=C(\Delta K)^m\]  
+  where C, m = material parameters; \(\Delta K\) = SIF range (analytical calculation for simple specimens, numerical for complex geometries).
+- **Remaining FCGL Calculation**: Integrate Paris law:  
+  \[n_{Ref}=\int_{a_t}^{a_c} \frac{1}{C(\Delta K)^m}da\]  
+  where \(a_t\) = current crack length; \(a_c\) = critical failure crack length.
+
+### 3.2 Artificial Neural Networks
+- **Structure**: 3 perceptron layers (mitigate overfitting for limited data), output:  
+  \[n=NN(a)=\pmb{w}^{(3)}\left(f\left(w^{(2)}\left(f\left(w^{(1)}a+b^{(1)}\right)\right)+b^{(2)}\right)\right)+b^{(3)}\]  
+  where \(w^{(i)}, b^{(i)}\) = weights/biases (i=1,2,3); \(f(\cdot)\) = activation function.
+- **Activation Function**: Tanh (nonlinearity, smoothness, non-zero second derivative for easy training):  
+  \[tanh(x)=\frac{e^x - e^{-x}}{e^x + e^{-x}}\]
+
+### 3.3 Loss Functions Incorporating Physical Knowledge
+Total loss = data loss (\(Loss_D\)) + physical loss (\(Loss_P\)) (both MSELoss):  
+\[
+\left\{
+\begin{array}{l}
+Loss_D=MSELoss(n_{pred}, n_{obs}) \\
+Loss_P=MSELoss\left(\frac{da}{dn}, C(\Delta K)^m\right) \\
+Loss=\lambda_1 Loss_D + \lambda_2 Loss_P
+\end{array}
+\right.
+\]  
+where \(n_{pred}\) = model output; \(n_{obs}\) = observed cycles; \(\lambda_1, \lambda_2\) = hyperparameters (balance data/physical constraints).
+
+- **Automatic Differentiation**: Compute gradient \(\frac{dn}{da}=\frac{\partial NN}{\partial a}\) (avoids tedious/error-prone manual calculation), substitute into \(Loss_P\):  
+  \[Loss_P=MSELoss\left(\frac{1}{\frac{\partial NN}{\partial a}}, C(\Delta K)^m\right)\]
+
+- **Optimization**: Minimize loss to update network parameters (w, b) and physical parameters (C, m):  
+  \[w, b, C, m=arg\ min_{w,b,C,m} Loss(w,b,C,m)\]  
+  Optimizers: SGD [46], Adam [47].
+
+### 3.4 Parameters Identification
+- **Individualized Parameters**: C and m vary with material microstructure; identified via PINN using observed data.
+- **Training Procedure (Table 1, Algorithm 1)**:
+  1. Input early observed data (\(a_{obs}, n_{obs}\)).
+  2. Predict \(n_{pred}\) via NN, compute \(Loss_D\).
+  3. Randomly sample hypothetical crack lengths \(a_p\) in \([a_0, a_c]\) (\(a_0\) = initial crack length).
+  4. Compute network gradient \(\frac{\partial NN}{\partial a_p}\) via automatic differentiation.
+  5. Calculate \(Loss_P\) and total Loss.
+  6. Update parameters via backpropagation until convergence.
+- **Remaining FCGL Prediction**:  
+  \[n_{Ref}=NN(a_c) - n_t\]  
+  where \(n_t\) = cycles at current observation moment.
+
+## 4. Results and Analysis
+Two datasets validate the method: Virkler et al. [49] (MT specimens) and Wu & Ni [50] (CT specimens). Training data = initial 20% of a-n curves; prediction data = remaining 80%.
+
+### 4.1 2024-T3 Aluminum Alloy MT Specimens
+- **Dataset**: 68 specimens (width=152.4mm, thickness=2.54mm); sinusoidal load (20Hz, \(F_{max}=5.25kN\), \(F_{min}=1.05kN\)); crack length \(a\): 9.00–49.80mm; 164 data points/specimen, 68 independent a-n curves.
+- **\(\Delta K\) Calculation**:  
+  \[\Delta K=\frac{\Delta F}{B}\sqrt{\frac{\pi \alpha}{2W}sec\frac{\pi \alpha}{2}}\]  
+  where \(\Delta F=F_{max}-F_{min}\); W=specimen width; B=thickness; \(\alpha=2a/W\).
+- **Hyperparameters (Table 2)**: Train ratio=0.2; epochs=25,000; optimizer=Adam; weight decay=0.001; learning rate=0.001; \(\lambda_1=100\), \(\lambda_2=1\); hidden layers=64×64; activation=Tanh; \(a_p\) per epoch=500.
+- **Training Efficiency**: 1.5 min/25,000 epochs (NVIDIA GTX1650).
+- **Loss Convergence (Fig. 4)**: \(Loss_P\) converges at ~18,000 epochs; valid loss approaches zero.
+
+#### 4.1.1 Method Comparison (Fig. 5)
+- **Data-driven method [20]**: Overfits training data, poor extrapolation (cumulative errors).
+- **Physics-based method (Paris law)**: Better than data-driven but suffers from parameter deviation (linear fitting of early noisy data).
+- **Proposed PINN**: Lowest prediction deviation across specimens.
+
+#### 4.1.2 lg(da/dn)-lg(ΔK) Curve (Fig. 6)
+- PINN’s nonlinear fitting of a-n data (vs. physics-based linear fitting of lg(da/dn)-lg(ΔK)) avoids conversion errors, yielding more accurate C and m.
+
+#### 4.1.3 Prediction Accuracy (Fig. 7)
+- PINN: All predictions within 1.5× dispersion band; 55.9% within 15% error.
+- Physics-based: Mostly within 2.5× dispersion band; 17.7% within 15% error.
+
+#### 4.1.4 Sensitivity Analysis (Fig. 8)
+- L2RE (L2 relative error) decreases with more training data for both methods.
+- PINN has lower/stable L2RE than physics-based method, especially with scarce data (10–20% training data).
+- Physics-based method needs 40% training data (≈70% fatigue life) to match PINN’s performance with 20% data.
+
+### 4.2 2024-T351 Aluminum Alloy CT Specimens
+- **Dataset**: 30 specimens (W=50.0mm, B=12.0mm); sinusoidal load (15Hz, \(F_{max}=4.5kN\), \(F_{min}=0.9kN\)); crack length \(a\): 18mm to fracture; 30 repeated experiments.
+- **\(\Delta K\) Calculation**:  
+  \[\Delta K=\frac{\Delta P}{B\sqrt{W}}\frac{2+\alpha}{(1-\alpha)^{3/2}}\left(0.886+4.64\alpha-13.32\alpha^2+14.72\alpha^3-5.6\alpha^4\right)\]  
+  where \(\alpha=a/W\).
+- **Hyperparameters**: Same as MT specimens; C=2.83E-08, m=3.73 (initial values from validation data); n normalized by 10,000.
+- **Loss Convergence (Fig. 10)**: All losses converge to near zero at 15,000 epochs.
+
+#### 4.2.1 Method Comparison (Fig. 11)
+- Data-driven and physics-based methods show increasing deviations with crack propagation.
+- PINN maintains precise predictions across the entire a range.
+
+#### 4.2.2 lg(da/dn)-lg(ΔK) Curve (Fig. 12)
+- PINN’s iterative refinement via nonlinear mapping better reflects actual crack growth than physics-based method (susceptible to data fluctuations).
+
+#### 4.2.3 Prediction Accuracy (Fig. 13)
+- PINN: All predictions within 1.5× dispersion band; 83% within 15% error.
+- Physics-based: Deviations within 2.5× dispersion band; 30% within 15% error.
+
+## 5. Conclusion
+- The proposed PINN method embeds FCG physical constraints into network gradients, enhancing prediction accuracy and interpretability.
+- Physical parameters (C, m) are updateable, reflecting individualized crack propagation characteristics.
+- Validated with two specimen types, showing simplicity and broad applicability (all predictions within 1.5× error band).
+
+### Future Research Directions
+- Incorporate uncertainties to improve prediction reliability.
+- Explore advanced data fusion strategies.
+- Handle complex crack growth scenarios.
+- Integrate with digital twin for real-time monitoring and predictive maintenance.
+
+## CRediT Authorship Contribution Statement
+- Wangwang Liao: Writing – original draft, Methodology, Investigation, Conceptualization.
+- Xiangyun Long: Writing – review & editing, Supervision, Conceptualization.
+- Chao Jiang: Writing – review & editing, Supervision, Resources, Project administration, Formal analysis.
+
+## Declaration of Competing Interest
+The authors declare no known competing financial interests or personal relationships that could influence the work.
+
+## Acknowledgement
+Supported by:
+- National Science Foundation (52175134, 52235005, 52122505)
+- Natural Science Fund for Excellent Young Scholars of Hunan Province (2023JJ20010)
+- Science and Technology Innovation Program of Hunan Province (2024RC3097)
+
+## Data Availability
+Data will be made available on request.
+
+## References
+[1] Jones R. Metallurgical failure analysis of GP905 reboiler, technical information, longford royal commission. Expert Work Package II 1999;9.  
+[2] Berto F, Lazzarin P. Recent developments in brittle and quasi-brittle failure assessment of engineering materials by means of local approaches. Mater Sci Eng R Rep 2014;75:1–48.  
+[3] Davidson D, Lankford J. Fatigue crack growth in metals and alloys: mechanisms and micromechanics. Int Mater Rev 1992;37:45–76.  
+[4] Molent L, Jones R, Barter S, Pitt S. Recent developments in fatigue crack growth assessment. Int J Fatigue 2006;28:1759–68.  
+[5] Sadananda K, Babu MN, Vasudevan A. A review of fatigue crack growth resistance in the short crack growth regime. Mater Sci Eng A 2019;754:674–701.  
+[6] Wu SC, Li HC, Zhang W, Kang GZ. Recent research progress on mechanisms and models of fatigue crack growth for metallic materials. Chinese Journal of Solid Mechanics 2019;40:489–538.  
+[7] Irwin GR. Analysis of stresses and strains near the end of a crack traversing a plate. J Appl Mech 1957;24:361–4.  
+[8] Rice JR. A path independent integral and the approximate analysis of strain concentration by notches and cracks. J Appl Mech 1968;35:379–86.  
+[9] Jones R. Fatigue crack growth and damage tolerance. Fatigue Fract Eng Mater Struct 2014;37:463–83.  
+[10] Paris P, Erdogan F. A critical analysis of crack propagation laws. J Basic Eng 1963;85:528–33.  
+[11] Forman RG, Kearney VE, Engle RM. Numerical analysis of crack propagation in cyclic-loaded structures. J Basic Eng 1967;89:459–63.  
+[12] Schütz W. The prediction of fatigue life in the crack initiation and propagation stages-a state of the art survey. Eng Fract Mech 1979;11:405–21.  
+[13] Glinka G. A cumulative model of fatigue crack growth. Int J Fatigue 1982;4:59–67.  
+[14] Schwalbe KH. Comparison of several fatigue crack propagation laws with experimental results. Eng Fract Mech 1974;6:325–41.  
+[15] Kujawski D, Ellyin F. A fatigue crack propagation model. Eng Fract Mech 1984;20:695–704.  
+[16] Chen L, Cai LX, Yao D. A new method to predict fatigue crack growth rate of materials based on average cyclic plasticity strain damage accumulation. Chin J Aeronaut 2013;26:130–5.  
+[17] Zhu SP, Huang HZ, Peng W, Wang HK, Mahadevan S. Probabilistic physics of failure-based framework for fatigue life prediction of aircraft gas turbine discs under uncertainty. Reliab Eng Syst Saf 2016;146:1–12.  
+[18] Ni Q, Ji JC, Feng K, Zhang Y, Lin D, Zheng J. Data-driven bearing health management using a novel multi-scale fused feature and gated recurrent unit. Reliab Eng Syst Saf 2024;242:109753.  
+[19] Feng K, Ji JC, Zhang Y, Ni Q, Liu Z, Beer M. Digital twin-driven intelligent assessment of gear surface degradation. Mech Syst Sig Process 2023;186:109896.  
+[20] Ma XR, He XF, Tu ZC. Prediction of fatigue–crack growth with neural network-based increment learning scheme. Eng Fract Mech 2021;241:107402.  
+[21] Zhang W, Bao ZM, Jiang S, He JJ. An artificial neural network-based algorithm for evaluation of fatigue crack propagation considering nonlinear damage accumulation. Materials 2016;9:483.  
+[22] Maleki E, Unal O, Kashyzadeh KR. Fatigue behavior prediction and analysis of shot peened mild carbon steels. Int J Fatigue 2018;116:48–67.  
+[23] Lee J, Almond D, Harris. The use of neural networks for the prediction of fatigue lives of composite materials. Compos A Appl Sci Manuf 1999;30:1159–69.  
+[24] Zhao YM, Kou HC, Wu W, Deng Y, Tang B, Li JS. Prediction of high cycle fatigue property of Ti-6Al-4V alloy using artificial neural network. Materials Science Forum, Trans Tech Publ 2016:360–7.  
+[25] Zhang L, Wang ZC, Wang L, Zhang Z, Chen X, Meng L. Machine learning-based real-time visible fatigue crack growth detection. Digital Communications and Networks 2021;7:551–8.  
+[26] Long XY, Yu MC, Liao WW, Jiang C. A deep learning-based fatigue crack growth rate measurement method using mobile phones. Int J Fatigue 2023;167:107327.  
+[27] Liu JK, Long XY, Jiang C, Liao WW. Multi-feature vision transformer for automatic defect detection and quantification in composites using thermography. NDT and E Int 2024;143:103033.  
+[28] Long XY, Zhao SK, Jiang C, Li WP, Liu CH. Deep learning-based planar crack damage evaluation using convolutional neural networks. Eng Fract Mech 2021;246:107604.  
+[29] Long XY, Ding XF, Jiang C, Zhang X, Liao WW, Liu K. An intelligent crack damage assessment method by integrating information and physics. Eng Fract Mech 2024;295:109737.  
+[30] Do DT, Lee J, Nguyen-Xuan H. Fast evaluation of crack growth path using time series forecasting. Eng Fract Mech 2019;218:106567.  
+[31] He GY, Zhao YX, Yan CL. Application of tabular data synthesis using generative adversarial networks on machine learning-based multiaxial fatigue life prediction. Int J Press Vessel Pip 2022;199:104779.  
+[32] Raissi M, Perdikaris P, Karniadakis GE. Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. J Comput Phys 2019;378:686–707.  
+[33] Cuomo S, Di Cola VS, Giampaolo F, Rozza G, Raissi M, Piccialli F. Scientific machine learning through physics–informed neural networks: Where we are and what’s next. J Sci Comput 2022;92:88.  
+[34] Halamka J, Bartošák M, Španiel M. Using hybrid physics-informed neural networks to predict lifetime under multiaxial fatigue loading. Eng Fract Mech 2023;289:109351.  
+[35] Dourado A, Viana FA. Physics-informed neural networks for corrosion-fatigue prognosis. In: Proceedings of the Annual Conference of the PHM Society; 2019.  
+[36] Chen J, Liu Y. Fatigue property prediction of additively manufactured Ti-6Al-4V using probabilistic physics-guided learning. Addit Manuf 2021;39:101876.  
+[37] Ni Q, Ji JC, Halkon B, Feng K, Nandi AK. Physics-informed residual network (PIResNet) for rolling element bearing fault diagnostics. Mech Syst Sig Process 2023;200:110544.  
+[38] Wang LY, Zhu SP, Luo CQ, Liao D, Wang QY. Physics-guided machine learning frameworks for fatigue life prediction of AM materials. Int J Fatigue 2023;172:107658.  
+[39] Badora M, Bartosik P, Graziano A, Szolc T. Using physics-informed neural networks with small datasets to predict the length of gas turbine nozzle cracks. Adv Eng Inf 2023;58:102232.  
+[40] Salvati E, Tognan A, Laurenti L, Pelegatti M, De Bona F. A defect-based physics-informed machine learning framework for fatigue finite life prediction in additive manufacturing. Mater Des 2022;222:111089.  
+[41] Zhou TT, Jiang S, Han T, Zhu SP, Cai Y. A physically consistent framework for fatigue life prediction using probabilistic physics-informed neural network. Int J Fatigue 2023;166:107234.  
+[42] Goswami S, Yin M, Yu Y, Karniadakis GE. A physics-informed variational DeepONet for predicting crack path in quasi-brittle materials. Comput Methods Appl Mech Eng 2022;391:114587.  
+[43] Ziyin L, Hartwig T, Ueda M. Neural networks fail to learn periodic functions and how to fix it. Adv Neural Inf Proces Syst 2020;33:1583–94.  
+[44] Bejani MM, Ghatee M. A systematic review on overfitting control in shallow and deep neural networks. Artif Intell Rev 2021;54:6391–438.  
+[45] Jagtap AD, Kawaguchi K, Karniadakis GE. Adaptive activation functions accelerate convergence in deep and physics-informed neural networks. J Comput Phys 2020;404:109136.  
+[46] Bottou L. Stochastic gradient learning in neural networks. Proceedings of Neuro-Nımes 1991;91:12.  
+[47] Kingma DP, Ba J. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980, 2014.  
+[48] Baydin AG, Pearlmutter BA, Radul AA, Siskind JM. Automatic differentiation in machine learning: a survey. J Mach Learn Res 2018;18:1–43.  
+[49] Virkler DA, Hillberry BM, Goel PK. The statistical nature of fatigue crack propagation. J Eng Mater Technol 1979;101:148–53.  
+[50] Wu WF, Ni CC. A study of stochastic fatigue crack growth modeling through experimental data. Probab Eng Mech 2003;18:107–18.  
+[51] Ioffe S, Szegedy C. Batch normalization: Accelerating deep network training by reducing internal covariate shift. In: International conference on machine learning. PMLR; 2015. p. 448–56.
