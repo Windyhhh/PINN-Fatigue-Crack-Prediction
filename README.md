@@ -57,6 +57,15 @@ PINN-Fatigue-Crack-Prediction/
 
 ---
 
+
+## Results
+
+<div align="center">
+  <img src="experiments/generated_plots/Best_PINN_N_a_Curve.png" alt="Crack growth N-a curve (analytical vs PINN)" width="70%"/>
+  <img src="experiments/generated_plots/Best_PINN_Results.png" alt="PINN prediction results" width="70%"/>
+</div>
+
+---
 ## License
 
 MIT — free to use, modify and distribute.
