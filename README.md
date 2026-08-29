@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔧 PINN-Fatigue-Crack-Prediction
+# 疲劳裂纹扩展预测 | PINN-Fatigue-Crack-Prediction
 
 ### PINN-based fatigue crack growth prediction.
 
